@@ -1,11 +1,10 @@
-# Week 7 - Secure Authentication System  
-### CST1510 – Cyber Security
+# Week 7 - Secure Authentication System 
 
 **Student:** Artur Kamerski  
 **Student ID:** M01041562  
-**Module:** CST1510 – Cyber Security and Digital Forensics  
-**Project:** Week 7 Lab – Secure Login & User Authentication  
-**Coursework Part:** Multi-Domain Intelligence Platform – Authentication Module
+**Module:** CST1510 - BSc Cyber Security and Digital Forensics  
+**Project:** Week 7 Lab - Secure Login & User Authentication  
+**Coursework Part:** Multi-Domain Intelligence Platform - Authentication Module
 
 ---
 
