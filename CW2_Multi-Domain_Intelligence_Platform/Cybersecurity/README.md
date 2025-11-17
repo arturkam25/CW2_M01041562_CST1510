@@ -34,7 +34,7 @@ The solution follows the laboratory requirements from Week 7 and forms the basis
 
 ###  User Registration  
 - Validates username (3–20 chars, alphanumeric)  
-- Validates password (min. 6 characters)  
+- Validates password (min. 8 characters)  
 - Ensures unique usernames  
 - Stores credentials in a safe, consistent format
 
