@@ -1,12 +1,12 @@
-Week 7 - Secure Authentication System
+# Week 7 - Secure Authentication System
 
-Student: Artur Kamerski
-Student ID: M01041562
-Module: CST1510 - BSc Cyber Security and Digital Forensics
-Project: Week 7 Lab - Secure Login & User Authentication
-Coursework Part: Multi-Domain Intelligence Platform - Authentication Module
+## Student: Artur Kamerski
+## Student ID: M01041562
+## Module: CST1510 - BSc Cyber Security and Digital Forensics
+## Project: Week 7 Lab - Secure Login & User Authentication
+## Coursework Part: Multi-Domain Intelligence Platform - Authentication Module
 
-1. Project Overview
+# 1. Project Overview
 This project implements a secure, console based authentication system using Python and the bcrypt hashing library.
 It forms the authentication layer of the Multi-Domain Intelligence Platform (CW2) and demonstrates key cybersecurity concepts such as:
 - Secure password hashing
@@ -18,14 +18,14 @@ It forms the authentication layer of the Multi-Domain Intelligence Platform (CW2
 - Cross platform secure password input
 The system runs on Windows, Linux, and macOS, adjusting password masking behaviour accordingly.
 
-2. Key Features
+# 2. Key Features
 
-2.1 Secure Password Hashing
+## 2.1 Secure Password Hashing
 - Uses bcrypt with automatic salting (bcrypt.gensalt()).
 - Plaintext passwords are never stored.
 - Password verification uses bcrypt.checkpw().
 
-2.2 Cross-Platform Password Masking
+## 2.2 Cross-Platform Password Masking
 The function input_password():
 - Shows * instead of real characters.
 - Uses:
@@ -34,7 +34,7 @@ The function input_password():
     - falls back to getpass if needed.
 Ensures secure password entry on every OS.
 
-2.3 Strong Password Policy With Live Feedback
+## 2.3 Strong Password Policy With Live Feedback
 Password must include:
 - 8+ characters
 - 1 uppercase letter
@@ -46,14 +46,15 @@ During input, requirements are shown with:
 - ✖ blinking red crosses for unmet rules
 If all checks pass:
 `✔ All password requirements met.`
-2.4 Username Validation
+
+## 2.4 Username Validation
 - 3–20 characters
 - Alphanumeric only
 - "admin" username automatically becomes an admin role
 
-3. Data Storage
+# 3. Data Storage
 
-3.1 Users File - users.txt
+## 3.1 Users File - users.txt
 Stored in CSV format:
 `username,password_hash,failed_attempts,is_locked,role,email,recovery_code`
 - failed_attempts - tracks login failures
@@ -64,7 +65,7 @@ Stored in CSV format:
 Example recovery code:
 `ABCD-7X2Q-K91M`
 
-3.2 Log File – logs.txt
+## 3.2 Log File - logs.txt
 Every critical event is logged:
 `[YYYY-MM-DD HH:MM:SS] Event description...`
 Logged events include:
@@ -75,9 +76,9 @@ Logged events include:
 - Lockouts
 - Admin operations
 
-4. Authentication Logic
+# 4. Authentication Logic
 
-4.1 Login Workflow
+## 4.1 Login Workflow
 login_user_once() implements:
 - Username lookup
 - Password verification
@@ -87,12 +88,12 @@ login_user_once() implements:
 `Your account is LOCKED.`
 Admins can later unlock the account.
 
-4.2 Lockout Security
-- 3 failed logins → account automatically locked
+## 4.2 Lockout Security
+- 3 failed logins - account automatically locked
 - Lock persists until admin manually unlocks
 - User is warned when only 1 attempt remains
 
-4.3 Loading Bar Visual Effect
+## 4.3 Loading Bar Visual Effect
 Every major operation displays a loading bar:
 `[LOGGING IN] [>>>>>>>>>>>>------] 67%`
 Used for:
@@ -103,9 +104,9 @@ Used for:
 - Account deletion
 Adds realism and improves UX.
 
-5. User Roles and Menus
+# 5. User Roles and Menus
 
-5.1 User Panel
+## 5.1 User Panel
 `--- USER PANEL (username) ---`
 `1. Change password`
 `2. Delete account`
@@ -116,7 +117,7 @@ Users can:
 - Delete their own account (requires password confirmation)
 - Logout with a loading animation
 
-5.2 Admin Panel
+## 5.2 Admin Panel
 `--- ADMIN PANEL ---`
 `1. List users`
 `2. Unlock user`
@@ -124,6 +125,7 @@ Users can:
 `4. Delete user account`
 `5. Change my password`
 `6. Logout`
+
 Admin capabilities:
 - View all users in a formatted table
 - Unlock locked accounts
@@ -132,9 +134,9 @@ Admin capabilities:
 - Change own password
 - Full audit logging
 
-6. Account Recovery
+# 6. Account Recovery
 
-6.1 Email & Recovery Code
+## 6.1 Email & Recovery Code
 During registration:
 - User enters email
 - Email is always stored lowercase
@@ -142,13 +144,13 @@ During registration:
 - Used for both username and password recovery
 - Enables realistic "Forgot…" flows
 
-6.2 Forgot Username
+## 6.2 Forgot Username
 User enters:
 - Email
 - Recovery code
 If matched, system displays the username.
 
-6.3 Forgot Password
+## 6.3 Forgot Password
 User enters:
 - Username
 - Email
@@ -159,21 +161,21 @@ System ensures:
 - Account becomes unlocked
 - Failed attempts reset
 
-7. Visual UX Features
+# 7. Visual UX Features
 Loading Bar
 Used for login/logout/registration/reset etc.
 Colored Output
 - Green - success
 - Yellow - info
-- Red – errors
+- Red - errors
 - Blinking red - password rule not met
 
-8. Running the Program
+# 8. Running the Program
 
-8.1 Requirements
+## 8.1 Requirements
 `pip install bcrypt`
 
-8.2 Start the System
+## 8.2 Start the System
 `python auth.py`
 
 Main menu:
@@ -181,13 +183,14 @@ Main menu:
 `2. Login`
 `3. Exit`
 
-9. Files Created
-File	    Purpose
-users.txt	Stores registered accounts
-logs.txt	Tracks system events
-auth.py	    Main authentication module
+# 9. Files Created
+| File       | Purpose                       |
+|------------|-------------------------------|
+| users.txt  | Stores registered accounts     |
+| logs.txt   | Tracks system events           |
+| auth.py    | Main authentication module     |
 
-10. Limitations and Future Improvements
+# 10. Limitations and Future Improvements
 Current Limitations
 - Users stored in plaintext CSV (except passwords).
 - No encryption for user file.
@@ -201,7 +204,7 @@ Potential Enhancements
 - Session tokens for web version
 - Encryption of user file
 
-11. Summary
+# 11. Summary
 
 This system demonstrates a realistic, multi feature authentication module including:
 - Password hashing (bcrypt)
