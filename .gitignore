@@ -1,4 +1,6 @@
-users.txt
-logs.txt
+__pycache__/
+*/__pycache__/
+*.pyc
 /DATA/
-_pycache_
+logs.txt
+users.txt
