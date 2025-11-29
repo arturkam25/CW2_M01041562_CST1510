@@ -1,4 +1,16 @@
 from .db import get_connection
+import random
+import string
+
+
+# ============================================================
+# LICENSE KEY GENERATOR – 12 znaków w formacie XXXX-XXXX-XXXX
+# ============================================================
+def generate_license_key():
+    """Generate a 12-character license key in XXXX-XXXX-XXXX format."""
+    def block():
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    return f"{block()}-{block()}-{block()}"
 
 
 def create_tables():
@@ -62,4 +74,5 @@ def create_tables():
     
     conn.commit()
     conn.close()
+
 

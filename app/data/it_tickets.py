@@ -1,6 +1,6 @@
 import pandas as pd
-
 from .db import get_connection
+
 
 def migrate_tickets():
     """
@@ -34,11 +34,13 @@ def migrate_tickets():
         if conn:
             conn.close()
 
+
 def read_all_tickets():
     conn = get_connection()
     df = pd.read_sql("SELECT * FROM it_tickets;", conn)
     conn.close()
     return df
+
 
 # CRUD
 
@@ -66,6 +68,7 @@ def create_ticket(ticket_id, created, priority, issue_type, assigned_to, status,
     conn.commit()
     conn.close()
 
+
 def get_ticket_by_id(ticket_id):
     conn = get_connection()
     curr = conn.cursor()
@@ -74,6 +77,7 @@ def get_ticket_by_id(ticket_id):
     conn.close()
     return row
 
+
 def get_all_tickets():
     conn = get_connection()
     curr = conn.cursor()
@@ -81,6 +85,7 @@ def get_all_tickets():
     rows = curr.fetchall()
     conn.close()
     return rows
+
 
 def update_ticket(ticket_id, created, priority, issue_type, assigned_to, status, description=None):
     """
@@ -110,6 +115,7 @@ def update_ticket(ticket_id, created, priority, issue_type, assigned_to, status,
     curr.execute(sql, (created, priority, issue_type, assigned_to, status, description, ticket_id))
     conn.commit()
     conn.close()
+
 
 def delete_ticket(ticket_id):
     conn = get_connection()

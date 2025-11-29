@@ -9,7 +9,7 @@ from app.data.users import (
     delete_user,
 )
 
-from app.data.incidents import (
+from app.data.cyber_incidents import (
     migrate_cyber_incidents,
     read_all_cyber_incidents,
     create_incident,
@@ -27,7 +27,7 @@ from app.data.datasets import (
     delete_dataset,
 )
 
-from app.data.tickets import (
+from app.data.it_tickets import (
     migrate_tickets,
     read_all_tickets,
     create_ticket,
