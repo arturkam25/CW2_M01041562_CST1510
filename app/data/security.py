@@ -1,5 +1,7 @@
 import re
 import bcrypt
+import random
+import string
 
 
 def validate_password_strength(password):
@@ -36,6 +38,23 @@ def verify_password(password, hashed):
     return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 
+def generate_recovery_code():
+    """Generate a recovery code in format XXXX-XXXX-XXXX"""
+    parts = []
+    for _ in range(3):
+        part = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+        parts.append(part)
+    return "-".join(parts)
+
+
+def is_valid_email(email):
+    """Validate email format"""
+    if not email or len(email) > 254 or " " in email:
+        return False
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    return bool(re.match(pattern, email))
+
+
 def authenticate_user(username, password):
     """
     Authenticate a user by username and password.
@@ -49,7 +68,12 @@ def authenticate_user(username, password):
         If successful, returns (True, user_dict, "Login successful")
         If failed, returns (False, None, error_message)
     """
-    from .users import get_user_by_username
+    # Import here to avoid circular import
+    try:
+        from .users import get_user_by_username
+    except ImportError:
+        # Fallback if relative import fails
+        from app.data.users import get_user_by_username
     
     user = get_user_by_username(username)
     
@@ -57,7 +81,7 @@ def authenticate_user(username, password):
         return False, None, "Invalid username or password."
     
     # user tuple structure: (id, username, password_hash, is_admin, disabled, role, email, license_key)
-    user_id, db_username, password_hash, is_admin, disabled, role, email, license_key = user
+    user_id, db_username, password_hash, is_admin, disabled, role, email, license_key = user[:8]
     
     # Check if user is disabled
     if disabled:

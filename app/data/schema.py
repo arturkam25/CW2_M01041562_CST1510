@@ -31,9 +31,31 @@ def create_tables():
             disabled INTEGER,
             role TEXT,
             email TEXT,
-            license_key TEXT
+            license_key TEXT,
+            failed_attempts INTEGER DEFAULT 0,
+            recovery_code TEXT
         );
     """)
+    
+    # Add new columns if they don't exist (for existing databases)
+    # Check if columns exist by trying to select them
+    try:
+        curr.execute("SELECT failed_attempts FROM users LIMIT 1;")
+    except:
+        try:
+            curr.execute("ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0;")
+            conn.commit()
+        except:
+            pass  # Column already exists or other error
+    
+    try:
+        curr.execute("SELECT recovery_code FROM users LIMIT 1;")
+    except:
+        try:
+            curr.execute("ALTER TABLE users ADD COLUMN recovery_code TEXT;")
+            conn.commit()
+        except:
+            pass  # Column already exists or other error
     
     # Cyber incidents table
     curr.execute("""

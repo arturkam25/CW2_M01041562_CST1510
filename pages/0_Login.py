@@ -28,6 +28,9 @@ if st.session_state.authenticated and st.session_state.user:
 # Import after title is displayed
 try:
     from app.data.security import authenticate_user
+    # Ensure database schema is up to date
+    from app.data.schema import create_tables
+    create_tables()
 except Exception as e:
     st.error(f"Error loading authentication module: {e}")
     st.code(str(e))
@@ -55,5 +58,10 @@ with st.form("login_form"):
 
 # Footer
 st.markdown("---")
-st.markdown("Don't have an account? Contact your administrator.")
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🔑 Forgot Password / Username?", use_container_width=True):
+        st.switch_page("pages/5_Forgot_Password.py")
+with col2:
+    st.caption("Don't have an account? Contact your administrator.")
 
