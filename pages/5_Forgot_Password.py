@@ -7,7 +7,11 @@ st.set_page_config(
 )
 
 from app.data.users import get_user_by_username_for_recovery, reset_password_with_recovery, generate_recovery_code_for_user
+from app.utils.navigation import hide_sidebar_completely
 # Import security functions inside functions to avoid circular import
+
+# Hide sidebar on password recovery page (not authenticated)
+hide_sidebar_completely()
 
 st.title("🔑 Password Recovery")
 st.markdown("---")
@@ -26,7 +30,7 @@ with tab1:
         new_password = st.text_input("New Password", type="password", placeholder="Enter new password")
         confirm_password = st.text_input("Confirm New Password", type="password", placeholder="Confirm new password")
         
-        submit_button = st.form_submit_button("Reset Password", use_container_width=True)
+        submit_button = st.form_submit_button("Reset Password", width='stretch')
         
         if submit_button:
             # Import here to avoid circular import
@@ -44,7 +48,7 @@ with tab1:
                     st.success(message)
                     st.info("You can now login with your new password.")
                     if st.button("Go to Login"):
-                        st.switch_page("pages/0_Login.py")
+                        st.switch_page("Home.py")
                 else:
                     if isinstance(message, list):
                         for error in message:
@@ -60,7 +64,7 @@ with tab2:
         email = st.text_input("Email", placeholder="Enter your email address")
         recovery_code = st.text_input("Recovery Code", placeholder="Enter your recovery code")
         
-        submit_button = st.form_submit_button("Recover Username", use_container_width=True)
+        submit_button = st.form_submit_button("Recover Username", width='stretch')
         
         if submit_button:
             # Import here to avoid circular import
@@ -95,5 +99,5 @@ with tab2:
 
 st.markdown("---")
 if st.button("← Back to Login"):
-    st.switch_page("pages/0_Login.py")
+    st.switch_page("Home.py")
 

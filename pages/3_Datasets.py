@@ -5,23 +5,23 @@ import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
 
+# IMPORTANT: Hide default menu FIRST, before any other imports or code
+from app.utils.navigation import hide_default_streamlit_menu, render_navigation_sidebar
+hide_default_streamlit_menu()
+
 from app.data.datasets import read_all_datasets
 from app.utils.auth import require_login
 
 # Check if user is logged in
 user = require_login()
 
+# Render custom navigation sidebar
+render_navigation_sidebar()
+
 st.title("📊 Datasets Metadata")
 
 # Display current user info
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.caption(f"Logged in as: **{user['username']}** ({user['role']})")
-with col2:
-    if st.button("Logout"):
-        st.session_state.authenticated = False
-        st.session_state.user = None
-        st.rerun()
+st.caption(f"Logged in as: **{user['username']}** ({user['role']})")
 
 # Load and display data
 try:
@@ -56,7 +56,7 @@ try:
                 )
                 fig_rows.update_layout(showlegend=False)
                 fig_rows.update_xaxes(tickangle=45)
-                st.plotly_chart(fig_rows, use_container_width=True)
+                st.plotly_chart(fig_rows, width='stretch')
         
         with chart_col2:
             # Chart 2: Scatter plot - Rows vs Columns (with size categories)
@@ -78,7 +78,7 @@ try:
                     hover_data=['name'] if 'name' in df.columns else [],
                     color_discrete_sequence=px.colors.qualitative.Set3
                 )
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                st.plotly_chart(fig_scatter, width='stretch')
         
         # Second row of charts
         chart_col3, chart_col4 = st.columns(2)
@@ -102,7 +102,7 @@ try:
                     )
                     fig_uploader.update_layout(showlegend=False)
                     fig_uploader.update_xaxes(tickangle=45)
-                    st.plotly_chart(fig_uploader, use_container_width=True)
+                    st.plotly_chart(fig_uploader, width='stretch')
                 else:
                     st.info("No uploader data available")
             else:
@@ -125,7 +125,7 @@ try:
                     color_discrete_sequence=px.colors.sequential.RdBu
                 )
                 fig_size.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_size, use_container_width=True)
+                st.plotly_chart(fig_size, width='stretch')
         
         # Chart 5: Stacked bar chart - Datasets by uploader and size category
         if 'uploaded_by' in df.columns and 'rows' in df.columns:
@@ -165,7 +165,7 @@ try:
                         barmode='stack',
                         xaxis={'tickangle': 45}
                     )
-                    st.plotly_chart(fig_stacked, use_container_width=True)
+                    st.plotly_chart(fig_stacked, width='stretch')
                 else:
                     st.info("No uploader data available for stacked chart")
             except Exception as e:
@@ -190,7 +190,7 @@ try:
         st.subheader("All Datasets")
         st.dataframe(
             df,
-            use_container_width=True,
+            width='stretch',
             height=600
         )
         

@@ -528,4 +528,52 @@ def create_user_secure(username, password, is_admin, disabled, role, email):
     finally:
         conn.close()
 
+def register_user_public(username, password, email):
+    """
+    Public user registration (UI).
+    - Always non-admin
+    - Always enabled
+    - Role = user
+    - Shows ONLY license_key (no recovery code)
+    """
+    success, message = create_user_secure(
+        username=username,
+        password=password,
+        is_admin=0,
+        disabled=0,
+        role="user",
+        email=email
+    )
 
+    if not success:
+        return False, message
+
+    # Wyciągamy TYLKO license key z message
+    license_line = None
+    for line in message.splitlines():
+        if "License Key:" in line:
+            license_line = line.strip()
+            break
+
+    if not license_line:
+        return False, "Account created, but license key could not be retrieved."
+
+    # Zwracamy tylko to, co user ma zobaczyć
+    return True, license_line
+
+
+#def register_user_public(username, password, email):
+#    """
+#    Public user registration (UI).
+#    - Always non-admin
+#    - Always enabled
+#    - Role = user
+#    """
+#    return create_user_secure(
+#        username=username,
+#        password=password,
+#        is_admin=0,
+#        disabled=0,
+#        role="user",
+#        email=email
+#    )

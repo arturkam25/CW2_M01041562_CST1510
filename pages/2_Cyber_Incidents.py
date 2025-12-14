@@ -6,23 +6,23 @@ import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
 
+# IMPORTANT: Hide default menu FIRST, before any other imports or code
+from app.utils.navigation import hide_default_streamlit_menu, render_navigation_sidebar
+hide_default_streamlit_menu()
+
 from app.data.cyber_incidents import read_all_cyber_incidents
 from app.utils.auth import require_login
 
 # Check if user is logged in
 user = require_login()
 
+# Render custom navigation sidebar
+render_navigation_sidebar()
+
 st.title("🛡️ Cyber Incidents")
 
 # Display current user info
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.caption(f"Logged in as: **{user['username']}** ({user['role']})")
-with col2:
-    if st.button("Logout"):
-        st.session_state.authenticated = False
-        st.session_state.user = None
-        st.rerun()
+st.caption(f"Logged in as: **{user['username']}** ({user['role']})")
 
 # Load and display data
 try:
@@ -58,7 +58,7 @@ try:
                     }
                 )
                 fig_severity.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_severity, use_container_width=True)
+                st.plotly_chart(fig_severity, width='stretch')
         
         with chart_col2:
             # Chart 2: Bar chart - Incidents by Category
@@ -78,7 +78,7 @@ try:
                 )
                 fig_category.update_layout(showlegend=False)
                 fig_category.update_xaxes(tickangle=45)
-                st.plotly_chart(fig_category, use_container_width=True)
+                st.plotly_chart(fig_category, width='stretch')
         
         # Second row of charts
         chart_col3, chart_col4 = st.columns(2)
@@ -100,7 +100,7 @@ try:
                     color_continuous_scale='Blues'
                 )
                 fig_status.update_layout(showlegend=False)
-                st.plotly_chart(fig_status, use_container_width=True)
+                st.plotly_chart(fig_status, width='stretch')
         
         with chart_col4:
             # Chart 4: Grouped bar chart - Severity vs Status
@@ -121,7 +121,7 @@ try:
                     yaxis_title="Count",
                     barmode='group'
                 )
-                st.plotly_chart(fig_grouped, use_container_width=True)
+                st.plotly_chart(fig_grouped, width='stretch')
         
         # Chart 5: Scatter plot - Severity vs Status (with aggregation)
         if 'severity' in df.columns and 'status' in df.columns:
@@ -159,7 +159,7 @@ try:
             )
             fig_scatter.update_xaxes(tickvals=list(range(len(severity_order))), ticktext=severity_order)
             fig_scatter.update_yaxes(tickvals=list(range(len(status_order))), ticktext=status_order)
-            st.plotly_chart(fig_scatter, use_container_width=True)
+            st.plotly_chart(fig_scatter, width='stretch')
         
         # Chart 6: Radar chart - Category profile
         if 'category' in df.columns and 'severity' in df.columns:
@@ -203,7 +203,7 @@ try:
                         showlegend=True,
                         title="Severity Distribution by Category (Radar Chart)"
                     )
-                    st.plotly_chart(fig_radar, use_container_width=True)
+                    st.plotly_chart(fig_radar, width='stretch')
             except Exception as e:
                 st.warning(f"Could not create radar chart: {e}")
         
@@ -274,7 +274,7 @@ try:
         # Display table
         st.dataframe(
             filtered_df,
-            use_container_width=True,
+            width='stretch',
             height=600
         )
         

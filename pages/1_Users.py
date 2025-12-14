@@ -3,6 +3,10 @@ import pandas as pd
 
 st.set_page_config(layout="wide")
 
+# IMPORTANT: Hide default menu FIRST, before any other imports or code
+from app.utils.navigation import hide_default_streamlit_menu, render_navigation_sidebar
+hide_default_streamlit_menu()
+
 from app.data.users import (
     get_all_users,
     create_user_secure,
@@ -17,17 +21,13 @@ from app.utils.auth import require_login, require_admin
 # Check if user is logged in and is admin
 user = require_admin()
 
+# Render custom navigation sidebar
+render_navigation_sidebar()
+
 st.title("👤 Users Management")
 
 # Display current user info
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.caption(f"Logged in as: **{user['username']}** ({user['role']})")
-with col2:
-    if st.button("Logout"):
-        st.session_state.authenticated = False
-        st.session_state.user = None
-        st.rerun()
+st.caption(f"Logged in as: **{user['username']}** ({user['role']})")
 
 # Tabs
 tab_view, tab_add, tab_delete, tab_manage = st.tabs(["View Users", "Add User", "Delete User", "Manage Accounts"])

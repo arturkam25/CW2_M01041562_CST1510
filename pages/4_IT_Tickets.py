@@ -6,23 +6,23 @@ import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
 
+# IMPORTANT: Hide default menu FIRST, before any other imports or code
+from app.utils.navigation import hide_default_streamlit_menu, render_navigation_sidebar
+hide_default_streamlit_menu()
+
 from app.data.it_tickets import read_all_tickets
 from app.utils.auth import require_login
 
 # Check if user is logged in
 user = require_login()
 
+# Render custom navigation sidebar
+render_navigation_sidebar()
+
 st.title("🎫 IT Tickets")
 
 # Display current user info
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.caption(f"Logged in as: **{user['username']}** ({user['role']})")
-with col2:
-    if st.button("Logout"):
-        st.session_state.authenticated = False
-        st.session_state.user = None
-        st.rerun()
+st.caption(f"Logged in as: **{user['username']}** ({user['role']})")
 
 # Load and display data
 try:
@@ -79,7 +79,7 @@ try:
                     }
                 )
                 fig_priority.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_priority, use_container_width=True)
+                st.plotly_chart(fig_priority, width='stretch')
         
         with chart_col2:
             # Chart 2: Bar chart - Tickets by Issue Type
@@ -106,7 +106,7 @@ try:
                         )
                         fig_issue.update_layout(showlegend=False)
                         fig_issue.update_xaxes(tickangle=45)
-                        st.plotly_chart(fig_issue, use_container_width=True)
+                        st.plotly_chart(fig_issue, width='stretch')
                     else:
                         st.info("⚠️ Issue Type column exists but all values are empty/None")
                 else:
@@ -135,7 +135,7 @@ try:
                         color_continuous_scale='Greens'
                     )
                     fig_status.update_layout(showlegend=False)
-                    st.plotly_chart(fig_status, use_container_width=True)
+                    st.plotly_chart(fig_status, width='stretch')
                 else:
                     st.info("No status data available")
             else:
@@ -160,7 +160,7 @@ try:
                     )
                     fig_assigned.update_layout(showlegend=False)
                     fig_assigned.update_xaxes(tickangle=45)
-                    st.plotly_chart(fig_assigned, use_container_width=True)
+                    st.plotly_chart(fig_assigned, width='stretch')
                 else:
                     st.info("No assigned users data available")
             else:
@@ -185,7 +185,7 @@ try:
                 yaxis_title="Count",
                 barmode='group'
             )
-            st.plotly_chart(fig_grouped, use_container_width=True)
+            st.plotly_chart(fig_grouped, width='stretch')
         
         # Chart 6: Scatter plot - Priority vs Status (with aggregation)
         if 'priority' in df.columns and 'status' in df.columns:
@@ -223,7 +223,7 @@ try:
             )
             fig_scatter.update_xaxes(tickvals=list(range(len(priority_order))), ticktext=priority_order)
             fig_scatter.update_yaxes(tickvals=list(range(len(status_order))), ticktext=status_order)
-            st.plotly_chart(fig_scatter, use_container_width=True)
+            st.plotly_chart(fig_scatter, width='stretch')
         
         # Chart 7: Radar chart - Issue Type profile by Priority
         if issue_type_col and 'priority' in df.columns:
@@ -267,7 +267,7 @@ try:
                         showlegend=True,
                         title="Priority Distribution by Issue Type (Radar Chart)"
                     )
-                    st.plotly_chart(fig_radar, use_container_width=True)
+                    st.plotly_chart(fig_radar, width='stretch')
             except Exception as e:
                 st.warning(f"Could not create radar chart: {e}")
         
@@ -338,7 +338,7 @@ try:
         # Display table
         st.dataframe(
             filtered_df,
-            use_container_width=True,
+            width='stretch',
             height=600
         )
         
