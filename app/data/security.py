@@ -4,6 +4,10 @@ import random
 import string
 
 
+# ===============================
+# PASSWORD VALIDATION & HASHING
+# ===============================
+
 def validate_password_strength(password):
     checks = {
         "min_length": len(password) >= 8,
@@ -38,69 +42,101 @@ def verify_password(password, hashed):
     return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 
+# ===============================
+# RECOVERY & EMAIL
+# ===============================
+
 def generate_recovery_code():
     """Generate a recovery code in format XXXX-XXXX-XXXX"""
     parts = []
     for _ in range(3):
-        part = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+        part = "".join(
+            random.choice(string.ascii_uppercase + string.digits)
+            for _ in range(4)
+        )
         parts.append(part)
     return "-".join(parts)
 
 
 def is_valid_email(email):
-    """Validate email format"""
     if not email or len(email) > 254 or " " in email:
         return False
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email))
 
 
+# ===============================
+# AUTHENTICATION WITH LOCKOUT
+# ===============================
+
 def authenticate_user(username, password):
     """
-    Authenticate a user by username and password.
-    
-    Args:
-        username: Username to authenticate
-        password: Plain text password
-        
-    Returns:
-        tuple: (success: bool, user_data: dict or None, message: str)
-        If successful, returns (True, user_dict, "Login successful")
-        If failed, returns (False, None, error_message)
+    Authenticate user with account lockout after 3 failed attempts.
     """
-    # Import here to avoid circular import
     try:
-        from .users import get_user_by_username
+        from .users import (
+            get_user_by_username,
+            update_user_failed_attempts,
+            lock_user_account
+        )
     except ImportError:
-        # Fallback if relative import fails
-        from app.data.users import get_user_by_username
-    
+        from app.data.users import (
+            get_user_by_username,
+            update_user_failed_attempts,
+            lock_user_account
+        )
+
+    MAX_ATTEMPTS = 3
+
     user = get_user_by_username(username)
-    
+
     if not user:
         return False, None, "Invalid username or password."
-    
-    # user tuple structure: (id, username, password_hash, is_admin, disabled, role, email, license_key)
-    user_id, db_username, password_hash, is_admin, disabled, role, email, license_key = user[:8]
-    
-    # Check if user is disabled
-    if disabled:
-        return False, None, "This account is disabled."
-    
-    # Verify password
-    if not verify_password(password, password_hash):
-        return False, None, "Invalid username or password."
-    
-    # Return user data as dictionary
-    user_data = {
-        "id": user_id,
-        "username": db_username,
-        "is_admin": bool(is_admin),
-        "disabled": bool(disabled),
-        "role": role,
-        "email": email,
-        "license_key": license_key
-    }
-    
-    return True, user_data, "Login successful."
 
+    # Handle old / new schema safely
+    if len(user) >= 9:
+        user_id, db_username, password_hash, is_admin, disabled, role, email, license_key, failed_attempts = user[:9]
+    else:
+        user_id, db_username, password_hash, is_admin, disabled, role, email, license_key = user[:8]
+        failed_attempts = 0
+
+    # Account already locked
+    if disabled:
+        return False, None, (
+            "Your account has been locked after multiple failed login attempts. "
+            "Please contact the administrator."
+        )
+
+    # Correct password
+    if verify_password(password, password_hash):
+        update_user_failed_attempts(user_id, 0)
+
+        user_data = {
+            "id": user_id,
+            "username": db_username,
+            "is_admin": bool(is_admin),
+            "disabled": bool(disabled),
+            "role": role,
+            "email": email,
+            "license_key": license_key
+        }
+
+        return True, user_data, "Login successful."
+
+    # Wrong password
+    failed_attempts = (failed_attempts or 0) + 1
+    update_user_failed_attempts(user_id, failed_attempts)
+
+    remaining = MAX_ATTEMPTS - failed_attempts
+
+    if remaining <= 0:
+        lock_user_account(user_id)
+        return False, None, (
+            "Your account has been locked after 3 failed login attempts. "
+            "Please contact the administrator."
+        )
+
+    return False, None, (
+        f"Invalid password. {remaining} attempt(s) remaining "
+        "before your account is locked."
+    )

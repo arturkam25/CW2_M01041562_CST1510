@@ -35,7 +35,7 @@ def hide_sidebar_completely():
 
 def render_navigation_sidebar():
     """
-    Simple custom sidebar.
+    Custom sidebar navigation (authenticated users only).
     """
     with st.sidebar:
         st.markdown("### 🧭 Navigation")
@@ -55,6 +55,14 @@ def render_navigation_sidebar():
 
         if st.button("🎫 IT Tickets", use_container_width=True):
             st.switch_page("pages/4_IT_Tickets.py")
+
+        # ======================
+        # 🤖 AI CHAT MODULE
+        # ======================
+        st.markdown("---")
+
+        if st.button("🤖 AI Assistant", use_container_width=True):
+            st.switch_page("pages/6_AI_Assistant.py")
 
         st.markdown("---")
 
