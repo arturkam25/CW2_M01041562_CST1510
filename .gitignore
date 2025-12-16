@@ -4,3 +4,4 @@ __pycache__/
 /DATA/
 logs.txt
 users.txt
+.streamlit/secrets.toml
