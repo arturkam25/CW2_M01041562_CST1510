@@ -1,25 +1,56 @@
+# ==============================================================================
+# USERS DATA ACCESS AND SECURITY OPERATIONS
+# ==============================================================================
+
+# This file is responsible for all database-level operations
+# related to user accounts within the application.
+
+# Scope of responsibility:
+# - creating and loading users
+# - full CRUD operations for users
+# - handling authentication-related account state
+# - managing failed login attempts and account lockout
+# - supporting password recovery workflows
+# - ensuring backward compatibility with older database schemas
+
+# Architectural role:
+# - data access layer (DAL) for users
+# - bridge between authentication logic and the database
+# - central place for user-related persistence logic
+
+# Security considerations:
+# - password hashes are stored, never plaintext passwords
+# - failed login attempts are tracked persistently
+# - account lockout is enforced at database level
+# - recovery codes and license keys are handled securely
+
 from .db import get_connection
 from .schema import generate_license_key
-# Import security functions inside functions to avoid circular import
 
+# ==============================================================================
+# INTERNAL HELPERS
+# ==============================================================================
+
+# This section contains small internal helper functions
+# used to normalise input values before database operations.
 
 def _bool(value):
+    # Converts None or string "None" to integer 0.
+    # Ensures consistent boolean storage in the database.
     return 0 if value in (None, "None") else int(value)
 
+# ==============================================================================
+# USER CREATION AND INITIAL LOADING
+# ==============================================================================
+
+# This section contains functions used to create users
+# and populate the database from external sources.
 
 def add_user_full(username, password_hash, is_admin, disabled, role, email, license_key):
-    """
-    Add a user to the database using INSERT OR IGNORE (prevents duplicates).
+    # Adds a user to the database using INSERT OR IGNORE.
     
-    Args:
-        username: Unique username
-        password_hash: Hashed password
-        is_admin: Admin flag (0 or 1)
-        disabled: Disabled flag (0 or 1)
-        role: User role
-        email: User email
-        license_key: License key
-    """
+    # This approach prevents duplicate users from being created
+    # when loading data multiple times.
     conn = get_connection()
     curr = conn.cursor()
     sql = """
@@ -28,61 +59,71 @@ def add_user_full(username, password_hash, is_admin, disabled, role, email, lice
         VALUES (?, ?, ?, ?, ?, ?, ?);
     """
     try:
-        curr.execute(sql, (username, password_hash, is_admin, disabled, role, email, license_key))
+        curr.execute(
+            sql,
+            (username, password_hash, is_admin, disabled, role, email, license_key)
+        )
         conn.commit()
-    except Exception as e:
+    except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
 
-
 def load_users_from_file(path="DATA/users.txt"):
-    """
-    Load users from a text file.
+    # Loads users from a text file and inserts them into the database.
     
-    Args:
-        path: Path to the users file (default: "DATA/users.txt")
-    """
+    # Expected file format:
+    # username,password_hash,is_admin,disabled,role,email,license_key
     try:
         with open(path, "r") as f:
             lines = f.readlines()
+
         for line in lines:
             parts = line.strip().split(',')
             if len(parts) != 7:
                 continue
-            username, password_hash, is_admin, disabled, role, email, license_key = parts
-            add_user_full(username, password_hash, is_admin, disabled, role, email, license_key)
+
+            (
+                username,
+                password_hash,
+                is_admin,
+                disabled,
+                role,
+                email,
+                license_key
+            ) = parts
+
+            add_user_full(
+                username,
+                password_hash,
+                is_admin,
+                disabled,
+                role,
+                email,
+                license_key
+            )
     except FileNotFoundError:
         print(f"Warning: Users file not found at {path}")
     except Exception as e:
         print(f"Error loading users from file: {e}")
 
-
 def add_test_users():
-    """Add test users to the database."""
+    # Adds simple test users to the database.
+    #
+    # Intended only for development and testing.
     add_user_full("alice", "hashed_password_123", None, None, None, None, None)
     add_user_full("bob", "hashed_password_456", None, None, None, None, None)
 
+# ==============================================================================
+# CRUD OPERATIONS
+# ==============================================================================
 
-# CRUD
+# This section implements standard CRUD operations
+# for user accounts.
 
 def create_user(username, password_hash, is_admin, disabled, role, email, license_key):
-    """
-    Create a new user.
-    
-    Args:
-        username: Unique username
-        password_hash: Hashed password
-        is_admin: Admin flag (0 or 1)
-        disabled: Disabled flag (0 or 1)
-        role: User role
-        email: User email
-        license_key: License key
-        
-    Returns:
-        int: The ID of the newly created user
-    """
+    # Creates a new user record and returns its database ID.
     conn = get_connection()
     curr = conn.cursor()
     sql = """
@@ -91,115 +132,85 @@ def create_user(username, password_hash, is_admin, disabled, role, email, licens
         VALUES (?, ?, ?, ?, ?, ?, ?);
     """
     try:
-        curr.execute(sql, (username, password_hash, is_admin, disabled, role, email, license_key))
+        curr.execute(
+            sql,
+            (username, password_hash, is_admin, disabled, role, email, license_key)
+        )
         conn.commit()
-        user_id = curr.lastrowid
-        return user_id
-    except Exception as e:
+        return curr.lastrowid
+    except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
 
-
 def get_user_by_id(user_id):
-    """
-    Get a user by their ID.
-    
-    Args:
-        user_id: The user ID
-        
-    Returns:
-        tuple: User record or None if not found
-    """
+    # Retrieves a user record by its unique ID.
     conn = get_connection()
     curr = conn.cursor()
     try:
         curr.execute("SELECT * FROM users WHERE id = ?;", (user_id,))
-        row = curr.fetchone()
-        return row
+        return curr.fetchone()
     finally:
         conn.close()
 
-
 def get_user_by_username(username):
-    """
-    Get a user by their username.
+    # Retrieves a user record by username.
     
-    Args:
-        username: The username
-        
-    Returns:
-        tuple: User record or None if not found
-    """
+    # This function also ensures that required columns
+    # exist for backward compatibility with older databases.
     conn = get_connection()
     curr = conn.cursor()
     try:
-        # Ensure columns exist before selecting
         try:
-            curr.execute("ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0;")
+            curr.execute(
+                "ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0;"
+            )
             conn.commit()
         except:
             pass
+
         try:
-            curr.execute("ALTER TABLE users ADD COLUMN recovery_code TEXT;")
+            curr.execute(
+                "ALTER TABLE users ADD COLUMN recovery_code TEXT;"
+            )
             conn.commit()
         except:
             pass
-        
+
         curr.execute("SELECT * FROM users WHERE username = ?;", (username,))
         row = curr.fetchone()
+
         if row:
-            failed_att = row[8] if len(row) > 8 else None
-            disabled_val = row[4] if len(row) > 4 else None
-            print(f"DEBUG get_user_by_username: Found user {username}, row length: {len(row)}, failed_attempts: {failed_att}, disabled: {disabled_val}")
-            print(f"DEBUG get_user_by_username: Full row: {row}")
+            print(
+                f"DEBUG get_user_by_username: Found user {username}, "
+                f"row length: {len(row)}"
+            )
         else:
-            print(f"DEBUG get_user_by_username: User {username} not found!")
+            print(f"DEBUG get_user_by_username: User {username} not found")
+
         return row
     finally:
         conn.close()
 
-
 def get_all_users():
-    """
-    Get all users from the database.
-    
-    Returns:
-        list: List of all user records
-    """
+    # Retrieves all users from the database.
     conn = get_connection()
     curr = conn.cursor()
     try:
         curr.execute("SELECT * FROM users ORDER BY is_admin DESC, id ASC")
-        rows = curr.fetchall()
-        return rows
+        return curr.fetchall()
     finally:
         conn.close()
 
-
 def update_user(user_id, username, password=None, is_admin=0, disabled=0, role="user", email="", license_key=None):
-    """
-    Update an existing user.
+    # Updates an existing user record.
     
-    Args:
-        user_id: The user ID to update
-        username: New username
-        password: New password (optional, will be hashed if provided)
-        is_admin: New admin flag
-        disabled: New disabled flag
-        role: New role
-        email: New email
-        license_key: New license key (optional)
-        
-    Returns:
-        tuple: (success: bool, message: str)
-    """
+    # If a new password is provided, it is validated and hashed.
     conn = get_connection()
     curr = conn.cursor()
-    
+
     if password:
-        # Import here to avoid circular import
         from .security import validate_password_strength, password_feedback, hash_password
         valid, checks = validate_password_strength(password)
         if not valid:
@@ -207,13 +218,16 @@ def update_user(user_id, username, password=None, is_admin=0, disabled=0, role="
             return False, password_feedback(checks)
         password_hash = hash_password(password)
     else:
-        curr.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,))
+        curr.execute(
+            "SELECT password_hash FROM users WHERE id = ?",
+            (user_id,)
+        )
         result = curr.fetchone()
         if not result:
             conn.close()
             return False, "User not found."
         password_hash = result[0]
-    
+
     sql = """
         UPDATE users SET
             username = ?,
@@ -226,16 +240,19 @@ def update_user(user_id, username, password=None, is_admin=0, disabled=0, role="
         WHERE id = ?
     """
     try:
-        curr.execute(sql, (
-            username,
-            password_hash,
-            _bool(is_admin),
-            _bool(disabled),
-            role,
-            email,
-            license_key,
-            user_id
-        ))
+        curr.execute(
+            sql,
+            (
+                username,
+                password_hash,
+                _bool(is_admin),
+                _bool(disabled),
+                role,
+                email,
+                license_key,
+                user_id
+            )
+        )
         conn.commit()
         return True, "User updated."
     except Exception as e:
@@ -244,95 +261,76 @@ def update_user(user_id, username, password=None, is_admin=0, disabled=0, role="
     finally:
         conn.close()
 
-
 def delete_user(user_id):
-    """
-    Delete a user by their ID.
-    
-    Args:
-        user_id: The user ID to delete
-        
-    Returns:
-        tuple: (success: bool, message: str)
-    """
+    # Deletes a user record by ID.
     conn = get_connection()
     curr = conn.cursor()
     try:
         curr.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
+        return True, "User deleted."
     except Exception as e:
         conn.rollback()
         return False, f"Database error: {e}"
     finally:
         conn.close()
-    return True, "User deleted."
 
+# ==============================================================================
+# ACCOUNT SECURITY OPERATIONS
+# ==============================================================================
 
-# ===============================
-# ACCOUNT SECURITY FUNCTIONS
-# ===============================
+# This section contains functions responsible for
+# account lockout, failed login tracking and recovery.
 
 def update_user_failed_attempts(user_id, failed_attempts):
-    """Update failed login attempts for a user. Like in terminal code: user["failed_attempts"] = value"""
+    # Updates the number of failed login attempts for a user.
     conn = get_connection()
     curr = conn.cursor()
     try:
-        # Ensure column exists
         try:
-            curr.execute("ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0;")
-            conn.commit()
-        except Exception as e:
-            print(f"DEBUG update_user_failed_attempts: Column might exist: {e}")
-        
-        # Update failed attempts (like in terminal code: save_users(users))
-        curr.execute("UPDATE users SET failed_attempts = ? WHERE id = ?", (int(failed_attempts), user_id))
-        conn.commit()
-        
-        # Verify update
-        curr.execute("SELECT failed_attempts FROM users WHERE id = ?", (user_id,))
-        result = curr.fetchone()
-        if result:
-            print(f"DEBUG update_user_failed_attempts: Updated user {user_id} to {failed_attempts}, DB now has: {result[0]}")
-        else:
-            print(f"DEBUG update_user_failed_attempts: WARNING - User {user_id} not found after update!")
-    except Exception as e:
-        conn.rollback()
-        print(f"ERROR update_user_failed_attempts: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        conn.close()
-
-
-def lock_user_account(user_id):
-    """Lock a user account by setting disabled flag. Like in terminal code: user["is_locked"] = "1" """
-    conn = get_connection()
-    curr = conn.cursor()
-    try:
-        # Ensure columns exist
-        try:
-            curr.execute("ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0;")
+            curr.execute(
+                "ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0;"
+            )
             conn.commit()
         except:
             pass
-        
-        # Lock account (like in terminal code: user["is_locked"] = "1", user["failed_attempts"] = 3)
-        curr.execute("UPDATE users SET disabled = 1, failed_attempts = 3 WHERE id = ?", (user_id,))
+
+        curr.execute(
+            "UPDATE users SET failed_attempts = ? WHERE id = ?",
+            (int(failed_attempts), user_id)
+        )
         conn.commit()
-        print(f"DEBUG: Locked account for user {user_id}")
+    except Exception as e:
+        conn.rollback()
+        print(f"ERROR update_user_failed_attempts: {e}")
+    finally:
+        conn.close()
+
+def lock_user_account(user_id):
+    # Locks a user account after repeated failed login attempts.
+    conn = get_connection()
+    curr = conn.cursor()
+    try:
+        curr.execute(
+            "UPDATE users SET disabled = 1, failed_attempts = 3 WHERE id = ?",
+            (user_id,)
+        )
+        conn.commit()
     except Exception as e:
         conn.rollback()
         print(f"Error locking account: {e}")
     finally:
         conn.close()
 
-
 def unlock_user_account(user_id):
-    """Unlock a user account and reset failed attempts."""
+    # Unlocks a user account and resets failed login attempts.
     conn = get_connection()
     curr = conn.cursor()
     try:
-        curr.execute("UPDATE users SET disabled = 0, failed_attempts = 0 WHERE id = ?", (user_id,))
+        curr.execute(
+            "UPDATE users SET disabled = 0, failed_attempts = 0 WHERE id = ?",
+            (user_id,)
+        )
         conn.commit()
         return True, "User unlocked successfully."
     except Exception as e:
@@ -341,97 +339,103 @@ def unlock_user_account(user_id):
     finally:
         conn.close()
 
-
 def get_user_by_email(email):
-    """Get a user by their email address."""
+    # Retrieves a user record by email address.
     conn = get_connection()
     curr = conn.cursor()
     try:
         curr.execute("SELECT * FROM users WHERE email = ?", (email.lower(),))
-        row = curr.fetchone()
-        return row
+        return curr.fetchone()
     finally:
         conn.close()
 
-
 def generate_recovery_code_for_user(user_id):
-    """Generate and save a recovery code for a user."""
-    # Import here to avoid circular import
+    # Generates and stores a recovery code for a user.
     from .security import generate_recovery_code
     recovery_code = generate_recovery_code()
     conn = get_connection()
     curr = conn.cursor()
     try:
-        curr.execute("UPDATE users SET recovery_code = ? WHERE id = ?", (recovery_code, user_id))
+        curr.execute(
+            "UPDATE users SET recovery_code = ? WHERE id = ?",
+            (recovery_code, user_id)
+        )
         conn.commit()
         return recovery_code
-    except Exception as e:
+    except Exception:
         conn.rollback()
         return None
     finally:
         conn.close()
 
-
 def reset_password_with_recovery(username, email, recovery_code, new_password):
-    """
-    Reset password using recovery code or license key.
-    
-    Args:
-        username: Username
-        email: User email
-        recovery_code: Recovery code or license key
-        new_password: New password
-        
-    Returns:
-        tuple: (success: bool, message: str)
-    """
-    from .security import validate_password_strength, password_feedback, hash_password
-    
-    # Validate password
+    # Resets a user's password using a recovery code or license key.
+    from .security import validate_password_strength, password_feedback, hash_password, verify_password
+
     valid, checks = validate_password_strength(new_password)
     if not valid:
         return False, password_feedback(checks)
-    
+
     user = get_user_by_username(username)
     if not user:
         return False, "User not found."
-    
-    # Handle old and new schema
+
     if len(user) >= 10:
-        user_id, db_username, password_hash, is_admin, disabled, role, db_email, license_key, failed_attempts, db_recovery_code = user
+        (
+            user_id,
+            _,
+            password_hash,
+            _,
+            _,
+            _,
+            db_email,
+            license_key,
+            _,
+            db_recovery_code
+        ) = user
     else:
-        user_id, db_username, password_hash, is_admin, disabled, role, db_email, license_key = user
+        (
+            user_id,
+            _,
+            password_hash,
+            _,
+            _,
+            _,
+            db_email,
+            license_key
+        ) = user
         db_recovery_code = None
-    
-    # Verify email
+
     if db_email.lower() != email.lower():
         return False, "Email does not match."
-    
-    # Verify recovery code or license key
+
     recovery_code_upper = recovery_code.upper().strip()
     license_key_upper = license_key.upper().strip() if license_key else ""
     db_recovery_code_upper = db_recovery_code.upper().strip() if db_recovery_code else ""
-    
-    if recovery_code_upper != db_recovery_code_upper and recovery_code_upper != license_key_upper:
+
+    if (
+        recovery_code_upper != db_recovery_code_upper
+        and recovery_code_upper != license_key_upper
+    ):
         return False, "Invalid recovery code or license key."
-    
-    # Check if new password is same as old
-    from .security import verify_password
+
     if verify_password(new_password, password_hash):
         return False, "New password cannot be the same as the old password."
-    
-    # Update password and reset failed attempts
+
     new_password_hash = hash_password(new_password)
     conn = get_connection()
     curr = conn.cursor()
     try:
-        curr.execute("""
-            UPDATE users SET 
+        curr.execute(
+            """
+            UPDATE users SET
                 password_hash = ?,
                 failed_attempts = 0,
                 disabled = 0
             WHERE id = ?
-        """, (new_password_hash, user_id))
+            """,
+            (new_password_hash, user_id)
+        )
         conn.commit()
         return True, "Password reset successfully."
     except Exception as e:
@@ -440,68 +444,35 @@ def reset_password_with_recovery(username, email, recovery_code, new_password):
     finally:
         conn.close()
 
+# ==============================================================================
+# SECURE USER REGISTRATION
+# ==============================================================================
 
-def get_user_by_username_for_recovery(username):
-    """Get user data including recovery code for password recovery."""
-    user = get_user_by_username(username)
-    if not user:
-        return None
-    
-    # Handle old and new schema
-    if len(user) >= 10:
-        user_id, db_username, password_hash, is_admin, disabled, role, email, license_key, failed_attempts, recovery_code = user
-    else:
-        user_id, db_username, password_hash, is_admin, disabled, role, email, license_key = user
-        failed_attempts = 0
-        recovery_code = None
-    
-    return {
-        "id": user_id,
-        "username": db_username,
-        "email": email,
-        "license_key": license_key,
-        "recovery_code": recovery_code,
-        "failed_attempts": failed_attempts or 0,
-        "disabled": bool(disabled)
-    }
+# This section provides high-level user creation
+# with full validation and security handling.
 
-
-# ===============================
-# MAIN SECURE USER CREATION
-# ===============================
 def create_user_secure(username, password, is_admin, disabled, role, email):
-    """
-    Create a new user with password validation and hashing.
-    
-    Args:
-        username: Unique username
-        password: Plain text password (will be validated and hashed)
-        is_admin: Admin flag (0 or 1)
-        disabled: Disabled flag (0 or 1)
-        role: User role
-        email: User email
-        
-    Returns:
-        tuple: (success: bool, message: str or list of error messages)
-    """
-    # Import here to avoid circular import
-    from .security import is_valid_email, generate_recovery_code, validate_password_strength, password_feedback, hash_password
-    
-    # Validate email
+    # Creates a new user with full validation,
+    # hashing and recovery code generation.
+    from .security import (
+        is_valid_email,
+        generate_recovery_code,
+        validate_password_strength,
+        password_feedback,
+        hash_password
+    )
+
     if email and not is_valid_email(email):
         return False, "Invalid email format."
-    
-    # 1. validate password strength
+
     valid, checks = validate_password_strength(password)
     if not valid:
         return False, password_feedback(checks)
-    
-    # 2. hash password
+
     password_hash = hash_password(password)
-    
     license_key = generate_license_key()
     recovery_code = generate_recovery_code()
-    
+
     conn = get_connection()
     curr = conn.cursor()
     sql = """
@@ -510,18 +481,25 @@ def create_user_secure(username, password, is_admin, disabled, role, email):
         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
     """
     try:
-        curr.execute(sql, (
-            username,
-            password_hash,
-            _bool(is_admin),
-            _bool(disabled),
-            role,
-            email.lower() if email else "",
-            license_key,
-            recovery_code
-        ))
+        curr.execute(
+            sql,
+            (
+                username,
+                password_hash,
+                _bool(is_admin),
+                _bool(disabled),
+                role,
+                email.lower() if email else "",
+                license_key,
+                recovery_code
+            )
+        )
         conn.commit()
-        return True, f"User '{username}' created successfully.\nLicense Key: {license_key}\nRecovery Code: {recovery_code}"
+        return True, (
+            f"User '{username}' created successfully.\n"
+            f"License Key: {license_key}\n"
+            f"Recovery Code: {recovery_code}"
+        )
     except Exception as e:
         conn.rollback()
         return False, f"Database error: {e}"
@@ -529,13 +507,12 @@ def create_user_secure(username, password, is_admin, disabled, role, email):
         conn.close()
 
 def register_user_public(username, password, email):
-    """
-    Public user registration (UI).
-    - Always non-admin
-    - Always enabled
-    - Role = user
-    - Shows ONLY license_key (no recovery code)
-    """
+    # Public-facing user registration function.
+    
+    # Rules:
+    # - always non-admin
+    # - always enabled
+    # - role is fixed to "user"
     success, message = create_user_secure(
         username=username,
         password=password,
@@ -548,7 +525,6 @@ def register_user_public(username, password, email):
     if not success:
         return False, message
 
-    # Wyciągamy TYLKO license key z message
     license_line = None
     for line in message.splitlines():
         if "License Key:" in line:
@@ -558,22 +534,4 @@ def register_user_public(username, password, email):
     if not license_line:
         return False, "Account created, but license key could not be retrieved."
 
-    # Zwracamy tylko to, co user ma zobaczyć
     return True, license_line
-
-
-#def register_user_public(username, password, email):
-#    """
-#    Public user registration (UI).
-#    - Always non-admin
-#    - Always enabled
-#    - Role = user
-#    """
-#    return create_user_secure(
-#        username=username,
-#        password=password,
-#        is_admin=0,
-#        disabled=0,
-#        role="user",
-#        email=email
-#    )

@@ -1,3 +1,25 @@
+# ==============================================================================
+# PUBLIC ENTRY POINT - AUTHENTICATION AND LANDING PAGE
+# ==============================================================================
+
+# This file serves as the main public entry point for the application.
+# It handles:
+# - application configuration
+# - authentication and registration flows
+# - password and username recovery
+# - initial session state setup
+# - conditional rendering based on authentication state
+
+# Architectural role:
+# - top-level UI controller for unauthenticated and authenticated users
+# - bridges UI components with authentication and data layers
+# - controls navigation visibility and access boundaries
+
+# Design notes:
+# - no business logic is implemented here directly
+# - all authentication and persistence logic is delegated to data/services layers
+# - Streamlit session_state is used as the single source of truth for auth status
+
 import streamlit as st
 
 from app.utils.navigation import (
@@ -6,6 +28,13 @@ from app.utils.navigation import (
     render_navigation_sidebar,
 )
 from app.data.users import register_user_public
+
+# ==============================================================================
+# STREAMLIT APPLICATION CONFIGURATION
+# ==============================================================================
+
+# This section defines the global Streamlit configuration.
+# It must be executed before any UI rendering.
 
 st.set_page_config(
     page_title="Multi-Domain Intelligence Platform",
@@ -18,9 +47,17 @@ st.set_page_config(
     },
 )
 
-# =========================
-# SESSION STATE
-# =========================
+# ==============================================================================
+# SESSION STATE INITIALIZATION
+# ==============================================================================
+
+# This section ensures that all required session_state
+# keys exist before they are accessed elsewhere in the app.
+
+# Notes:
+# - prevents KeyError on first page load
+# - session_state controls authentication flow and UI state
+
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "user" not in st.session_state:
@@ -28,9 +65,17 @@ if "user" not in st.session_state:
 if "show_forgot_password" not in st.session_state:
     st.session_state.show_forgot_password = False
 
-# =========================
-# IMPORTS AFTER CONFIG
-# =========================
+# ==============================================================================
+# DEFERRED IMPORTS AND DATABASE INITIALIZATION
+# ==============================================================================
+
+# This section performs imports that rely on Streamlit configuration
+# and ensures database tables exist.
+
+# Design rationale:
+# - avoids import-time side effects before Streamlit config
+# - guarantees schema availability before authentication operations
+
 try:
     from app.data.security import authenticate_user, is_valid_email
     from app.data.schema import create_tables
@@ -41,13 +86,28 @@ except Exception as e:
     st.error(f"Error loading authentication module: {e}")
     st.stop()
 
-# ============================================================
-# NOT AUTHENTICATED
-# ============================================================
+# ==============================================================================
+# UNAUTHENTICATED USER FLOW
+# ==============================================================================
+
+# This section renders all UI paths available
+# to unauthenticated users:
+# - login
+# - registration
+# - password and username recovery
+
+# Sidebar navigation is fully hidden in this state.
+
 if not st.session_state.authenticated or not st.session_state.user:
     hide_sidebar_completely()
 
-    # ===== FORGOT PASSWORD =====
+    # ==========================================================================
+    # PASSWORD / USERNAME RECOVERY FLOW
+    # ==========================================================================
+    
+    # This branch is activated when the user selects
+    # the recovery option from the login screen.
+
     if st.session_state.show_forgot_password:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
@@ -59,6 +119,10 @@ if not st.session_state.authenticated or not st.session_state.user:
                 st.rerun()
 
             tab1, tab2 = st.tabs(["Reset Password", "Forgot Username"])
+
+            # --------------------------------------------------------------
+            # Password reset using recovery code or license key
+            # --------------------------------------------------------------
 
             with tab1:
                 with st.form("reset_password_form"):
@@ -86,6 +150,10 @@ if not st.session_state.authenticated or not st.session_state.user:
                             else:
                                 st.error(msg)
 
+            # --------------------------------------------------------------
+            # Username recovery using email and recovery code
+            # --------------------------------------------------------------
+
             with tab2:
                 with st.form("forgot_username_form"):
                     email = st.text_input("Email")
@@ -108,7 +176,12 @@ if not st.session_state.authenticated or not st.session_state.user:
                             else:
                                 st.error("Invalid recovery code.")
 
-    # ===== LOGIN / REGISTER =====
+    # ==========================================================================
+    # LOGIN AND REGISTRATION FLOW
+    # ==========================================================================
+    
+    # Default unauthenticated landing screen.
+
     else:
         col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -132,7 +205,10 @@ if not st.session_state.authenticated or not st.session_state.user:
 
             tab_login, tab_register = st.tabs(["Login", "Register"])
 
-            # ================= LOGIN =================
+            # --------------------------------------------------------------
+            # Login form
+            # --------------------------------------------------------------
+
             with tab_login:
                 with st.form("login_form"):
                     username = st.text_input("Username")
@@ -148,7 +224,10 @@ if not st.session_state.authenticated or not st.session_state.user:
                         else:
                             st.error(msg)
 
-            # ================= REGISTER =================
+            # --------------------------------------------------------------
+            # Public registration form
+            # --------------------------------------------------------------
+
             with tab_register:
                 with st.form("register_form"):
                     new_username = st.text_input("Username")
@@ -194,9 +273,18 @@ if not st.session_state.authenticated or not st.session_state.user:
                 st.session_state.show_forgot_password = True
                 st.rerun()
 
-# ============================================================
-# AUTHENTICATED
-# ============================================================
+# ==============================================================================
+# AUTHENTICATED USER FLOW
+# ==============================================================================
+
+# This section renders the main application shell
+# for authenticated users.
+
+# Responsibilities:
+# - hides default Streamlit UI elements
+# - renders custom navigation sidebar
+# - displays welcome and role information
+
 else:
     hide_default_streamlit_menu()
     render_navigation_sidebar()

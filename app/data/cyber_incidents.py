@@ -1,11 +1,55 @@
+# ==============================================================================
+# CYBER INCIDENTS DATA ACCESS LAYER
+# ==============================================================================
+
+# This file is responsible for handling all data-related operations
+# connected to cyber security incidents within the application.
+
+# Scope of responsibility:
+# - migrating cyber incident data from a CSV file into the database
+# - reading cyber incident data from the database
+# - implementing full CRUD operations (Create, Read, Update, Delete)
+#   for the cyber_incidents table
+
+# This file acts as a clear separation layer between:
+# - application logic (UI, Streamlit pages, services)
+# - and the physical database layer (SQLite)
+
+# Benefits of this approach:
+# - application logic does not directly interact with SQL queries
+# - the project structure remains clean and modular
+# - future extensions (validation, logging, auditing) can be added centrally
+
+
 import pandas as pd
 from .db import get_connection
 
+# ==============================================================================
+# DATA MIGRATION
+# ==============================================================================
+
+# This section is responsible for controlled data migration
+# from a CSV file into the database.
+
+# Typical use cases:
+# - first application startup
+# - database initialization
+# - test data seeding
+
 
 def migrate_cyber_incidents():
-    """
-    Migrate cyber incidents from CSV file to database.
-    """
+    # Migrates cyber incident records from a CSV file
+    # into the cyber_incidents table.
+    
+    # Process overview:
+    # 1. Load DATA/cyber_incidents.csv into a pandas DataFrame
+    # 2. Establish a database connection
+    # 3. Append data to the cyber_incidents table
+    # 4. Close the database connection
+    
+    # Error handling:
+    # - missing CSV file (FileNotFoundError)
+    # - any other unexpected exception (database, schema, data issues)
     try:
         df = pd.read_csv("DATA/cyber_incidents.csv")
         conn = get_connection()
@@ -16,14 +60,25 @@ def migrate_cyber_incidents():
     except Exception as e:
         print(f"Error migrating cyber incidents: {e}")
 
+# ==============================================================================
+# READ OPERATIONS (PANDAS)
+# ==============================================================================
+
+# This section provides database read operations
+# that return results as pandas DataFrames.
+
+# Particularly useful for:
+# - dashboards
+# - data visualisation
+# - exploratory data analysis (EDA)
+
 
 def read_all_cyber_incidents():
-    """
-    Read all cyber incidents from the database.
+    # Reads all records from the cyber_incidents table
+    # and returns them as a pandas DataFrame.
     
-    Returns:
-        pandas.DataFrame: DataFrame containing all cyber incidents
-    """
+    # Connection safety:
+    # - the database connection is always closed using finally
     conn = get_connection()
     try:
         df = pd.read_sql("SELECT * FROM cyber_incidents;", conn)
@@ -31,21 +86,42 @@ def read_all_cyber_incidents():
     finally:
         conn.close()
 
+# ==============================================================================
+# CRUD OPERATIONS
+# ==============================================================================
 
-# CRUD
+# This section contains classic CRUD operations:
+# - Create
+# - Read
+# - Update
+# - Delete
+
+# Design principles:
+# - each function opens its own database connection
+# - each function performs exactly one responsibility
+# - commit is executed only on success
+# - rollback is triggered on failure
+# - the connection is always closed
+
+# ==============================================================================
+# CREATE
+# ==============================================================================
 
 def create_incident(incident_id, timestamp, severity, category, status, description):
-    """
-    Create a new cyber incident.
+    # Inserts a new cyber security incident record
+    # into the cyber_incidents table.
     
-    Args:
-        incident_id: Unique identifier for the incident
-        timestamp: Timestamp when incident occurred
-        severity: Severity level (Low, Medium, High, Critical)
-        category: Incident category
-        status: Current status (Open, In Progress, Resolved, Closed)
-        description: Description of the incident
-    """
+    # Parameters map directly to database columns:
+    # - incident_id: unique incident identifier
+    # - timestamp: time when the incident occurred
+    # - severity: threat level (Low, Medium, High, Critical)
+    # - category: incident category
+    # - status: current incident state (Open, In Progress, Resolved, Closed)
+    # - description: textual incident description
+    
+    # Transaction safety:
+    # - commit on success
+    # - rollback and re-raise on error
     conn = get_connection()
     curr = conn.cursor()
     sql = """
@@ -62,34 +138,43 @@ def create_incident(incident_id, timestamp, severity, category, status, descript
     finally:
         conn.close()
 
+# ==============================================================================
+# READ (SINGLE RECORD)
+# ==============================================================================
 
 def get_incident_by_id(incident_id):
-    """
-    Get a cyber incident by its ID.
+    # Retrieves a single cyber incident using its unique ID.
     
-    Args:
-        incident_id: The incident ID
-        
-    Returns:
-        tuple: Incident record or None if not found
-    """
+    # Returns:
+    # - a tuple containing the incident record
+    # - None if the record does not exist
     conn = get_connection()
     curr = conn.cursor()
     try:
-        curr.execute("SELECT * FROM cyber_incidents WHERE incident_id = ?;", (incident_id,))
+        curr.execute(
+            "SELECT * FROM cyber_incidents WHERE incident_id = ?;",
+            (incident_id,)
+        )
         row = curr.fetchone()
         return row
     finally:
         conn.close()
 
+# ==============================================================================
+# READ (ALL RECORDS)
+# ==============================================================================
 
 def get_all_incidents():
-    """
-    Get all cyber incidents from the database.
+    # Retrieves all cyber incident records
+    # from the cyber_incidents table.
     
-    Returns:
-        list: List of all incident records
-    """
+    # Returns:
+    # - a list of tuples
+    
+    # Intended for:
+    # - backend logic
+    # - API responses
+    # - lightweight access without pandas
     conn = get_connection()
     curr = conn.cursor()
     try:
@@ -99,19 +184,18 @@ def get_all_incidents():
     finally:
         conn.close()
 
+# ==============================================================================
+# UPDATE
+# ==============================================================================
 
 def update_incident(incident_id, timestamp, severity, category, status, description):
-    """
-    Update an existing cyber incident.
+    # Updates an existing cyber incident identified by incident_id.
     
-    Args:
-        incident_id: The incident ID to update
-        timestamp: New timestamp
-        severity: New severity level
-        category: New category
-        status: New status
-        description: New description
-    """
+    # All mutable fields are overwritten with new values.
+    
+    # Transaction rules:
+    # - commit only if the update succeeds
+    # - rollback on any exception
     conn = get_connection()
     curr = conn.cursor()
     sql = """
@@ -124,7 +208,10 @@ def update_incident(incident_id, timestamp, severity, category, status, descript
         WHERE incident_id = ?;
     """
     try:
-        curr.execute(sql, (timestamp, severity, category, status, description, incident_id))
+        curr.execute(
+            sql,
+            (timestamp, severity, category, status, description, incident_id)
+        )
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -132,22 +219,27 @@ def update_incident(incident_id, timestamp, severity, category, status, descript
     finally:
         conn.close()
 
+# ==============================================================================
+# DELETE
+# ==============================================================================
 
 def delete_incident(incident_id):
-    """
-    Delete a cyber incident by its ID.
+    # Deletes a cyber incident from the database
+    # using its unique incident identifier.
     
-    Args:
-        incident_id: The incident ID to delete
-    """
+    # Notes:
+    # - the operation is irreversible
+    # - deleting a non-existing record does not raise an SQL error
     conn = get_connection()
     curr = conn.cursor()
     try:
-        curr.execute("DELETE FROM cyber_incidents WHERE incident_id = ?;", (incident_id,))
+        curr.execute(
+            "DELETE FROM cyber_incidents WHERE incident_id = ?;",
+            (incident_id,)
+        )
         conn.commit()
     except Exception as e:
         conn.rollback()
         raise
     finally:
         conn.close()
-

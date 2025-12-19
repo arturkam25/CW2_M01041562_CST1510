@@ -1,1 +1,7 @@
-bcrypt==4.2.0
+streamlit
+bcrypt>=4.0.0
+pandas
+numpy
+plotly
+openai
+Pillow>=10.0.0

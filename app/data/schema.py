@@ -1,26 +1,55 @@
+# ==============================================================================
+# DATABASE SCHEMA AND LICENSE KEY UTILITIES
+# ==============================================================================
+
+# This file is responsible for defining the database schema
+# and providing utility functions required at database level.
+
+# Scope of responsibility:
+# - generating license keys for users
+# - creating database tables if they do not exist
+# - performing safe schema upgrades for existing databases
+
+# Architectural role:
+# - infrastructure-level module
+# - executed during application initialisation
+# - ensures database consistency before any data operations
+
 from .db import get_connection
 import random
 import string
 
+# ==============================================================================
+# LICENSE KEY GENERATOR
+# ==============================================================================
 
-# ============================================================
-# LICENSE KEY GENERATOR – 12 znaków w formacie XXXX-XXXX-XXXX
-# ============================================================
+# This section provides a utility function for generating
+# license keys in a fixed, human-readable format.
+
 def generate_license_key():
-    """Generate a 12-character license key in XXXX-XXXX-XXXX format."""
+    # Generates a 12-character license key
+    # in the format XXXX-XXXX-XXXX.
     def block():
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
     return f"{block()}-{block()}-{block()}"
 
+# ==============================================================================
+# DATABASE SCHEMA CREATION
+# ==============================================================================
+
+# This section is responsible for creating all required
+# database tables if they do not already exist.
+
+# It also performs safe schema updates for existing databases
+# by adding missing columns when required.
 
 def create_tables():
-    """
-    Create all database tables if they don't exist.
-    This function should be called before any data operations.
-    """
+    # Creates all database tables required by the application.
+    
+    # This function must be executed before any read or write
+    # operations are performed on the database.
     conn = get_connection()
     curr = conn.cursor()
-    
     # Users table
     curr.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -36,27 +65,28 @@ def create_tables():
             recovery_code TEXT
         );
     """)
-    
-    # Add new columns if they don't exist (for existing databases)
-    # Check if columns exist by trying to select them
+    # Add missing columns for existing databases
     try:
         curr.execute("SELECT failed_attempts FROM users LIMIT 1;")
     except:
         try:
-            curr.execute("ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0;")
+            curr.execute(
+                "ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0;"
+            )
             conn.commit()
         except:
-            pass  # Column already exists or other error
-    
+            pass
+
     try:
         curr.execute("SELECT recovery_code FROM users LIMIT 1;")
     except:
         try:
-            curr.execute("ALTER TABLE users ADD COLUMN recovery_code TEXT;")
+            curr.execute(
+                "ALTER TABLE users ADD COLUMN recovery_code TEXT;"
+            )
             conn.commit()
         except:
-            pass  # Column already exists or other error
-    
+            pass
     # Cyber incidents table
     curr.execute("""
         CREATE TABLE IF NOT EXISTS cyber_incidents (
@@ -68,7 +98,6 @@ def create_tables():
             description TEXT
         );
     """)
-    
     # Datasets metadata table
     curr.execute("""
         CREATE TABLE IF NOT EXISTS datasets_metadata (
@@ -80,7 +109,6 @@ def create_tables():
             upload_date TEXT
         );
     """)
-    
     # IT tickets table
     curr.execute("""
         CREATE TABLE IF NOT EXISTS it_tickets (
@@ -93,8 +121,6 @@ def create_tables():
             description TEXT
         );
     """)
-    
+
     conn.commit()
     conn.close()
-
-

@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Ścieżki
+# Paths
 DB_PATH = Path("db")
 COSTS_PATH = DB_PATH / "costs.json"
 

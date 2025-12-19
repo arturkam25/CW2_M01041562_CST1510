@@ -30,18 +30,18 @@ openai_client = OpenAI(api_key=env["OPENAI_API_KEY"])
 # CHATBOT
 #
 def chatbot_reply(user_prompt, memory):
-    # dodaj system message
+    # add system message
     messages = [
         {
             "role": "system",
             "content": st.session_state["chatbot_personality"],
         },
     ]
-    # dodaj wszystkie wiadomości z pamięci
+    # add all messages from memory
     for message in memory:
         messages.append({"role": message["role"], "content": message["content"]})
 
-    # dodaj wiadomość użytkownika
+    # add user message
     messages.append({"role": "user", "content": user_prompt})
 
     response = openai_client.chat.completions.create(
@@ -66,8 +66,8 @@ def chatbot_reply(user_prompt, memory):
 # CONVERSATION HISTORY AND DATABASE
 #
 DEFAULT_PERSONALITY = """
-Jesteś pomocnikiem, który odpowiada na wszystkie pytania użytkownika.
-Odpowiadaj na pytania w sposób zwięzły i zrozumiały.
+You are a helper who answers all user questions.
+Answer questions in a concise and understandable way.
 """.strip()
 
 DB_PATH = Path("db")
@@ -93,45 +93,45 @@ def load_current_conversation():
         conversation_id = 1
         conversation = {
             "id": conversation_id,
-            "name": "Konwersacja 1",
+            "name": "Conversation 1",
             "chatbot_personality": DEFAULT_PERSONALITY,
             "messages": [],
         }
 
-        # tworzymy nową konwersację
+        # create a new conversation
         with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w", encoding="utf-8") as f:
             json.dump(conversation, f)
 
-        # która od razu staje się aktualną
+        # which immediately becomes the current one
         with open(DB_PATH / "current.json", "w", encoding="utf-8") as f:
             json.dump({"current_conversation_id": conversation_id}, f)
 
     else:
-        # sprawdzamy, która konwersacja jest aktualna
+        # check which conversation is current
         with open(DB_PATH / "current.json", "r", encoding="utf-8") as f:
             data = json.load(f)
             conversation_id = data["current_conversation_id"]
 
         conversation_file = DB_CONVERSATIONS_PATH / f"{conversation_id}.json"
         if not conversation_file.exists():
-            # Jeśli plik nie istnieje – utwórz pustą konwersację
+            # If file doesn't exist – create empty conversation
             conversation = {
                 "id": conversation_id,
-                "name": f"Konwersacja {conversation_id}",
+                "name": f"Conversation {conversation_id}",
                 "chatbot_personality": DEFAULT_PERSONALITY,
                 "messages": [],
             }
             with open(conversation_file, "w", encoding="utf-8") as f:
                 json.dump(conversation, f)
         else:
-            # Wczytaj zawartość tylko jeśli nie jest pusta
+            # Load content only if it's not empty
             with open(conversation_file, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 if not content:
-                    # Plik pusty – nadpisz domyślną strukturą
+                    # Empty file – overwrite with default structure
                     conversation = {
                         "id": conversation_id,
-                        "name": f"Konwersacja {conversation_id}",
+                        "name": f"Conversation {conversation_id}",
                         "chatbot_personality": DEFAULT_PERSONALITY,
                         "messages": [],
                     }
@@ -162,10 +162,10 @@ def save_current_conversation_messages():
     conversation_id = st.session_state["id"]
     new_messages = st.session_state["messages"]
 
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r") as f:
+    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r", encoding="utf-8") as f:
         conversation = json.loads(f.read())
 
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w") as f:
+    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w", encoding="utf-8") as f:
         f.write(json.dumps({
             **conversation,
             "messages": new_messages,
@@ -176,10 +176,10 @@ def save_current_conversation_name():
     conversation_id = st.session_state["id"]
     new_conversation_name = st.session_state["new_conversation_name"]
 
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r") as f:
+    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r", encoding="utf-8") as f:
         conversation = json.loads(f.read())
 
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w") as f:
+    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w", encoding="utf-8") as f:
         f.write(json.dumps({
             **conversation,
             "name": new_conversation_name,
@@ -190,10 +190,10 @@ def save_current_conversation_personality():
     conversation_id = st.session_state["id"]
     new_chatbot_personality = st.session_state["new_chatbot_personality"]
 
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r") as f:
+    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r", encoding="utf-8") as f:
         conversation = json.loads(f.read())
 
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w") as f:
+    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w", encoding="utf-8") as f:
         f.write(json.dumps({
             **conversation,
             "chatbot_personality": new_chatbot_personality,
@@ -201,13 +201,13 @@ def save_current_conversation_personality():
 
 
 def create_new_conversation():
-    # poszukajmy ID dla naszej kolejnej konwersacji
+    # find ID for our next conversation
     conversation_ids = []
     for p in DB_CONVERSATIONS_PATH.glob("*.json"):
         conversation_ids.append(int(p.stem))
 
-    # conversation_ids zawiera wszystkie ID konwersacji
-    # następna konwersacja będzie miała ID o 1 większe niż największe ID z listy
+    # conversation_ids contains all conversation IDs
+    # next conversation will have ID 1 greater than the largest ID in the list
     conversation_id = max(conversation_ids) + 1
     personality = DEFAULT_PERSONALITY
     if "chatbot_personality" in st.session_state and st.session_state["chatbot_personality"]:
@@ -215,17 +215,17 @@ def create_new_conversation():
 
     conversation = {
         "id": conversation_id,
-        "name": f"Konwersacja {conversation_id}",
+        "name": f"Conversation {conversation_id}",
         "chatbot_personality": personality,
         "messages": [],
     }
 
-    # tworzymy nową konwersację
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w") as f:
+    # create a new conversation
+    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w", encoding="utf-8") as f:
         f.write(json.dumps(conversation))
 
-    # która od razu staje się aktualną
-    with open(DB_PATH / "current.json", "w") as f:
+    # which immediately becomes the current one
+    with open(DB_PATH / "current.json", "w", encoding="utf-8") as f:
         f.write(json.dumps({
             "current_conversation_id": conversation_id,
         }))
@@ -235,10 +235,10 @@ def create_new_conversation():
 
 
 def switch_conversation(conversation_id):
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r") as f:
+    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r", encoding="utf-8") as f:
         conversation = json.loads(f.read())
 
-    with open(DB_PATH / "current.json", "w") as f:
+    with open(DB_PATH / "current.json", "w", encoding="utf-8") as f:
         f.write(json.dumps({
             "current_conversation_id": conversation_id,
         }))
@@ -250,7 +250,7 @@ def switch_conversation(conversation_id):
 def list_conversations():
     conversations = []
     for p in DB_CONVERSATIONS_PATH.glob("*.json"):
-        with open(p, "r") as f:
+        with open(p, "r", encoding="utf-8") as f:
             conversation = json.loads(f.read())
             conversations.append({
                 "id": conversation["id"],
@@ -265,13 +265,13 @@ def list_conversations():
 #
 load_current_conversation()
 
-st.title(":classical_building: NaszGPT")
+st.title(":classical_building: OurGPT")
 
 for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-prompt = st.chat_input("O co chcesz spytać?")
+prompt = st.chat_input("What would you like to ask?")
 if prompt:
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -290,11 +290,11 @@ if prompt:
     save_current_conversation_messages()
 
 with st.sidebar:
-    # 1. Model na górze
-    st.write("### Aktualny model", MODEL)
+    # 1. Model at the top
+    st.write("### Current model", MODEL)
 
     
-    # 2. Koszty (USD / PLN)
+    # 2. Costs (USD / PLN)
     total_cost = 0
     for message in st.session_state.get("messages") or []:
         if "usage" in message:
@@ -303,38 +303,38 @@ with st.sidebar:
 
     c0, c1 = st.columns(2)
     with c0:
-        st.metric("Koszt rozmowy (USD)", f"${total_cost:.4f}")
+        st.metric("Conversation cost (USD)", f"${total_cost:.4f}")
 
     with c1:
-        st.metric("Koszt rozmowy (PLN)", f"{total_cost * USD_TO_PLN:.4f}")
+        st.metric("Conversation cost (PLN)", f"{total_cost * USD_TO_PLN:.4f}")
 
-        # Całkowity koszt od początku
+        # Total cost from the beginning
     total_all_time = get_total_cost()
-    st.markdown(f"**Całkowity koszt rozmów:**\n\n`${total_all_time:.4f}` USD / `{total_all_time * USD_TO_PLN:.2f}` PLN")
+    st.markdown(f"**Total conversation cost:**\n\n`${total_all_time:.4f}` USD / `{total_all_time * USD_TO_PLN:.2f}` PLN")
  
-         
+        
     
-    # Rozwijana historia kosztów z 60 dni
-    with st.expander("Pokaż historię kosztów (Max 60 dni)"):
+    # Expandable cost history for 60 days
+    with st.expander("Show cost history (Max 60 days)"):
         cost_history = get_cost_summary(days=60)
         if not cost_history:
-            st.write("Brak danych.")
+            st.write("No data.")
         else:
             for date_str, cost_usd in cost_history.items():
                 st.write(f"{date_str}: ${cost_usd:.4f} / {cost_usd * USD_TO_PLN:.2f} PLN")
 
 
 
-    # 3. Ustawienia konwersacji
-    # st.subheader("Aktualna konwersacja")
+    # 3. Conversation settings
+    # st.subheader("Current conversation")
     st.session_state["name"] = st.text_input(
-        "Nazwa konwersacji (Press Enter to apply)",
+        "Conversation name (Press Enter to apply)",
         value=st.session_state["name"],
         key="new_conversation_name",
         on_change=save_current_conversation_name,
     )
     st.session_state["chatbot_personality"] = st.text_area(
-        "Osobowość chatbota (Press Ctrl+Enter to apply)",
+        "Chatbot personality (Press Ctrl+Enter to apply)",
         max_chars=1000,
         height=200,
         value=st.session_state["chatbot_personality"],
@@ -342,11 +342,11 @@ with st.sidebar:
         on_change=save_current_conversation_personality,
     )
 
-    st.subheader("Konwersacje")
-    if st.button("Nowa konwersacja"):
+    st.subheader("Conversations")
+    if st.button("New conversation"):
         create_new_conversation()
 
-    # pokazujemy tylko top 5 konwersacji
+    # show only top 5 conversations
     # conversations = list_conversations()
     # sorted_conversations = sorted(conversations, key=lambda x: x["id"], reverse=True)
     # for conversation in sorted_conversations[:5]:
@@ -354,27 +354,27 @@ with st.sidebar:
     #    with c0:
     #       st.write(conversation["name"])
     #    with c1:
-    #        if st.button("załaduj", key=conversation["id"], disabled=conversation["id"] == st.session_state["id"]):
+    #        if st.button("load", key=conversation["id"], disabled=conversation["id"] == st.session_state["id"]):
     #            switch_conversation(conversation["id"])
    
-    # pokaż wszystkie konwersacje w rozwijanej sekcji
+    # show all conversations in expandable section
     conversations = list_conversations()
     sorted_conversations = sorted(conversations, key=lambda x: x["id"], reverse=True)
 
-    with st.expander("Lista konwersacji"):
+    with st.expander("Conversation list"):
         for conversation in sorted_conversations:
             c0, c1 = st.columns([10, 3])
             with c0:
                 st.write(conversation["name"])
             with c1:
-                if st.button("załaduj", key=conversation["id"], disabled=conversation["id"] == st.session_state["id"]):
+                if st.button("load", key=conversation["id"], disabled=conversation["id"] == st.session_state["id"]):
                     switch_conversation(conversation["id"])
 
 
 
-    st.divider()  # opcjonalna linia oddzielająca
+    st.divider()  # optional separator line
 
-    if st.button("Resetuj historię"):
+    if st.button("Reset history"):
         reset_costs()
         st.session_state["messages"] = []
         save_current_conversation_messages()
